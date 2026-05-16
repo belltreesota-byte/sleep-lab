@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SleepLab 🌙</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #020617;
+  --card: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --cyan: #67e8f9;
+  --primary: #0891b2;
+  --purple: #7c3aed;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --sub: #94a3b8;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+input, button { font-family: inherit; }
+input::placeholder { color: var(--muted); }
+input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.4); }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+/* ── Animations ── */
+@keyframes twinkle { 0%,100%{opacity:.1} 50%{opacity:.55} }
+@keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pulse   { 0%,100%{opacity:.3;transform:scale(.8)} 50%{opacity:1;transform:scale(1.1)} }
+@keyframes spin    { to{transform:rotate(360deg)} }
+
+/* ── Stars ── */
+#stars { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+.star  { position:absolute; border-radius:50%; background:white; animation:twinkle var(--dur) ease-in-out infinite; animation-delay:var(--delay); }
+
+/* ── Auth ── */
+#auth-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #020617 0%, #0c1445 50%, #0f172a 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; position: relative;
+}
+.auth-box {
+  position: relative; z-index: 1; width: 100%; max-width: 420px;
+  animation: fadeUp .4s ease;
+}
+.auth-logo { text-align: center; margin-bottom: 36px; }
+.auth-logo .moon { font-size: 52px; display: block; margin-bottom: 10px; }
+.auth-logo h1 { font-family: 'Playfair Display', serif; font-size: 38px; color: white; }
+.auth-logo h1 span { color: var(--cyan); }
+.auth-logo p  { color: var(--sub); margin-top: 6px; font-size: 14px; }
+.auth-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  border-radius: 24px; padding: 32px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+}
+.auth-tabs { display:flex; background:rgba(255,255,255,0.05); border-radius:12px; padding:4px; margin-bottom:22px; }
+.auth-tab  { flex:1; padding:10px; border:none; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; background:transparent; color:var(--muted); }
+.auth-tab.active { background:rgba(255,255,255,0.15); color:white; }
+.dark-input {
+  width:100%; padding:12px 14px; margin-bottom:12px;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px; color:white; font-size:14px; outline:none;
+  transition:border-color .15s; color-scheme:dark;
+}
+.dark-input:focus { border-color:var(--primary); }
+.btn-primary {
+  width:100%; padding:13px; border:none; border-radius:12px;
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  color:white; font-size:15px; font-weight:700; cursor:pointer; transition:opacity .15s;
+}
+.btn-primary:hover { opacity:.88; }
+.btn-primary:disabled { background:rgba(255,255,255,0.06); color:var(--muted); cursor:not-allowed; }
+.err { color:#f87171; font-size:12px; text-align:center; margin-bottom:10px; }
+.guest-btn { width:100%; background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; margin-top:12px; text-decoration:underline; }
+
+/* ── App Shell ── */
+#app { display:none; min-height:100vh; background:linear-gradient(160deg,#020617 0%,#0c1445 40%,#0f172a 100%); }
+
+/* ── Nav ── */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  background:rgba(2,6,23,.88); backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border); padding:0 24px;
+}
+.nav-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; height:60px; gap:8px; }
+.nav-logo { font-family:'Playfair Display',serif; font-size:21px; color:white; flex-shrink:0; margin-right:12px; }
+.nav-logo span { color:var(--cyan); }
+.nav-tabs { display:flex; gap:2px; flex:1; overflow-x:auto; }
+.nav-tab {
+  padding:8px 13px; border:none; border-radius:8px 8px 0 0;
+  background:transparent; color:var(--muted); font-size:13px; font-weight:600;
+  cursor:pointer; white-space:nowrap;
+  border-bottom:2px solid transparent; transition:all .15s;
+}
+.nav-tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+.nav-user { display:flex; align-items:center; gap:10px; flex-shrink:0; margin-left:8px; }
+.nav-user span { color:var(--sub); font-size:13px; }
+.logout-btn { padding:6px 12px; border:1px solid rgba(255,255,255,0.15); border-radius:8px; background:transparent; color:var(--muted); font-size:12px; cursor:pointer; }
+
+/* ── Main ── */
+main { max-width:1100px; margin:0 auto; padding:80px 20px 48px; position:relative; z-index:1; }
+.tab-content { display:none; animation:fadeUp .25s ease; }
+.tab-content.active { display:block; }
+
+/* ── Cards ── */
+.glass { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; }
+.section-title { font-family:'Playfair Display',serif; font-size:22px; color:white; margin-bottom:18px; }
+
+/* ── Stats strip ── */
+.stats-strip { display:flex; gap:12px; margin-bottom:22px; }
+.stat-card   { flex:1; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 10px; text-align:center; }
+.stat-val    { font-size:22px; font-weight:700; color:white; }
+.stat-lbl    { font-size:11px; color:var(--muted); margin-top:4px; }
+
+/* ── Posts ── */
+.post      { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px; }
+.post-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.avatar    { width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.post-user { font-weight:600; font-size:14px; }
+.post-time { font-size:11px; color:var(--muted); margin-top:2px; }
+.post-tag  { background:rgba(103,232,249,.1); color:var(--cyan); font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; margin-left:auto; }
+.chips     { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.chip      { background:rgba(255,255,255,.06); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--sub); }
+.qbar      { height:4px; background:rgba(255,255,255,.06); border-radius:2px; margin-bottom:10px; }
+.qfill     { height:4px; border-radius:2px; }
+.post-comment { font-size:13px; color:#cbd5e1; line-height:1.65; margin-bottom:12px; }
+.like-btn  { background:none; border:none; cursor:pointer; font-size:13px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:5px; padding:0; transition:color .15s; }
+.like-btn.liked { color:#f43f5e; }
+
+/* ── Feed header ── */
+.feed-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.add-btn { padding:9px 18px; border:none; border-radius:10px; background:linear-gradient(135deg,var(--primary),var(--purple)); color:white; font-weight:700; font-size:13px; cursor:pointer; }
+
+/* ── Modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.open { display:flex; }
+.modal { background:#0f172a; border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:32px; width:100%; max-width:440px; animation:fadeUp .2s ease; }
+.modal h2 { font-family:'Playfair Display',serif; font-size:22px; color:white; margin-bottom:22px; }
+.form-row { display:flex; gap:12px; margin-bottom:14px; }
+.form-row > div { flex:1; }
+.form-label { display:block; color:var(--muted); font-size:11px; font-weight:700; margin-bottom:6px; }
+.cancel-btn { width:100%; padding:10px; border:none; background:none; color:var(--muted); font-size:13px; cursor:pointer; margin-top:8px; }
+
+/* ── Graph ── */
+.bar-chart { display:flex; align-items:flex-end; gap:10px; height:110px; }
+.bar-col   { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; height:100%; justify-content:flex-end; }
+.bar       { width:100%; border-radius:4px 4px 0 0; transition:height .5s ease; }
+.bar-val   { font-size:9px; color:var(--sub); font-weight:600; }
+.bar-day   { font-size:11px; color:var(--muted); }
+
+/* ── Tips ── */
+.tips-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-bottom:24px; }
+.tip-card  { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; display:flex; gap:14px; align-items:flex-start; }
+.tip-icon  { font-size:30px; flex-shrink:0; width:48px; height:48px; background:rgba(255,255,255,.06); border-radius:12px; display:flex; align-items:center; justify-content:center; }
+.tip-title { font-weight:700; font-size:14px; color:white; margin-bottom:5px; }
+.tip-desc  { font-size:13px; color:var(--sub); line-height:1.6; }
+.tip-tag   { display:inline-block; margin-top:6px; font-size:10px; font-weight:700; padding:2px 8px; border-radius:8px; background:rgba(103,232,249,.12); color:var(--cyan); }
+
+/* ── Ranking ── */
+.rank-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px 18px; margin-bottom:10px; display:flex; align-items:center; gap:14px; }
+.rank-card.me { background:rgba(103,232,249,.06); border-color:rgba(103,232,249,.25); }
+.rank-num  { font-size:16px; font-weight:800; width:36px; text-align:center; }
+.rank-info { flex:1; }
+.rank-name { font-weight:600; font-size:14px; }
+.rank-streak { font-size:11px; color:var(--muted); margin-top:2px; }
+.rank-score  { font-size:22px; font-weight:800; color:var(--cyan); }
+
+/* ── Shop ── */
+.shop-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px; }
+.product   { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; display:flex; flex-direction:column; gap:12px; }
+.product-icon { font-size:34px; width:58px; height:58px; background:rgba(255,255,255,.06); border-radius:13px; display:flex; align-items:center; justify-content:center; }
+.product-name  { font-weight:700; font-size:15px; }
+.product-brand { font-size:12px; color:var(--muted); margin-top:2px; }
+.product-stars { font-size:12px; color:#fbbf24; margin-top:2px; }
+.product-price { font-size:18px; font-weight:800; color:var(--cyan); margin-top:2px; }
+.product-tag   { background:rgba(251,191,36,.15); color:#fbbf24; font-size:9px; font-weight:700; padding:2px 7px; border-radius:8px; display:inline-block; margin-top:2px; }
+.detail-btn    { padding:10px; border:1px solid rgba(103,232,249,.3); border-radius:10px; background:rgba(103,232,249,.08); color:var(--cyan); font-weight:700; font-size:13px; cursor:pointer; margin-top:auto; }
+
+/* ── History ── */
+.history-title { color:var(--sub); font-size:14px; font-weight:700; margin-bottom:10px; }
+.history-item  { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
+.history-meta  { display:flex; justify-content:space-between; margin-bottom:8px; }
+.history-time  { color:var(--cyan); font-size:12px; font-weight:600; }
+.history-ts    { color:#475569; font-size:11px; }
+.history-text  { color:var(--sub); font-size:13px; line-height:1.6; }
+
+@media(max-width:600px){
+  .stats-strip { gap:8px; }
+  .stat-val    { font-size:18px; }
+  nav          { padding:0 12px; }
+  main         { padding:72px 14px 40px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Stars -->
+<div id="stars"></div>
+
+<!-- ══ AUTH PAGE ══════════════════════════════════════════ -->
+<div id="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <span class="moon">🌙</span>
+      <h1>Sleep<span>Lab</span></h1>
+      <p>みんなで作る、最高の眠り</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchMode('login')">ログイン</button>
+        <button class="auth-tab" onclick="switchMode('register')">新規登録</button>
+      </div>
+      <div id="name-field" style="display:none">
+        <input class="dark-input" id="inp-name" placeholder="ニックネーム" />
+      </div>
+      <input class="dark-input" id="inp-email" placeholder="メールアドレス" type="email" />
+      <input class="dark-input" id="inp-pass"  placeholder="パスワード" type="password" />
+      <div class="err" id="auth-err"></div>
+      <button class="btn-primary" onclick="doLogin()">ログイン →</button>
+      <button class="guest-btn" onclick="doGuest()">ゲストとして続ける</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════ -->
+<div id="app">
+  <!-- Nav -->
+  <nav>
+    <div class="nav-inner">
+      <div class="nav-logo">🌙 Sleep<span>Lab</span></div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showTab('home',this)">🏠 ホーム</button>
+        <button class="nav-tab" onclick="showTab('graph',this)">📊 グラフ</button>
+        <button class="nav-tab" onclick="showTab('tips',this)">💡 睡眠Tips</button>
+        <button class="nav-tab" onclick="showTab('ranking',this)">🏆 ランキング</button>
+        <button class="nav-tab" onclick="showTab('shop',this)">🛍️ ショップ</button>
+      </div>
+      <div class="nav-user">
+        <span id="nav-username"></span>
+        <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <!-- ── HOME ── -->
+    <div id="tab-home" class="tab-content active">
+      <div class="stats-strip">
+        <div class="stat-card"><div class="stat-val">7.0h</div><div class="stat-lbl">昨夜の睡眠</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:#4ade80">74</div><div class="stat-lbl">品質スコア</div></div>
+        <div class="stat-card"><div class="stat-val">🔥 3</div><div class="stat-lbl">連続記録</div></div>
+      </div>
+      <div class="feed-header">
+        <div class="section-title" style="margin:0">みんなの睡眠</div>
+        <button class="add-btn" onclick="openLog()">＋ 記録する</button>
+      </div>
+      <div id="feed"></div>
+    </div>
+
+    <!-- ── GRAPH ── -->
+    <div id="tab-graph" class="tab-content">
+      <div class="section-title">📊 今週の睡眠グラフ</div>
+      <div class="glass" style="margin-bottom:20px">
+        <div style="color:var(--sub);font-size:13px;font-weight:600;margin-bottom:14px">睡眠時間（時間）</div>
+        <div class="bar-chart" id="chart-hours"></div>
+      </div>
+      <div class="glass" style="margin-bottom:20px">
+        <div style="color:var(--sub);font-size:13px;font-weight:600;margin-bottom:14px">品質スコア</div>
+        <div class="bar-chart" id="chart-quality"></div>
+      </div>
+    </div>
+
+    <!-- ── TIPS ── -->
+    <div id="tab-tips" class="tab-content">
+      <div class="section-title">💡 快眠のための睡眠Tips</div>
+      <div class="tips-grid" id="tips-grid"></div>
+    </div>
+
+    <!-- ── RANKING ── -->
+    <div id="tab-ranking" class="tab-content">
+      <div class="section-title">🏆 週間ランキング</div>
+      <div id="ranking-list"></div>
+    </div>
+
+    <!-- ── SHOP ── -->
+    <div id="tab-shop" class="tab-content">
+      <div class="section-title">🛍️ おすすめ商品</div>
+      <div class="shop-grid" id="shop-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Log Modal ── -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal">
+    <h2>🌙 今夜の睡眠を記録</h2>
+    <div class="form-row">
+      <div><label class="form-label">就寝時刻</label><input type="time" class="dark-input" id="log-sleep" value="23:00" style="margin:0" /></div>
+      <div><label class="form-label">起床時刻</label><input type="time" class="dark-input" id="log-wake"  value="07:00" style="margin:0" /></div>
+    </div>
+    <label class="form-label">ひとこと</label>
+    <input class="dark-input" id="log-comment" placeholder="今日の睡眠はどうでしたか？" />
+    <button class="btn-primary" onclick="submitLog()">記録して投稿 🚀</button>
+    <button class="cancel-btn" onclick="closeLog()">キャンセル</button>
+  </div>
+</div>
+
+<script>
+// ══ DATA ══════════════════════════════════════════════════
+const POSTS = [
+  {id:1,user:"Hana",avatar:"🌸",sleepTime:"23:00",wakeTime:"06:30",duration:7.5,quality:88,comment:"深い睡眠が取れました！朝がすっきり✨",likes:24,liked:false,tag:"快眠"},
+  {id:2,user:"Riku",avatar:"🌿",sleepTime:"00:30",wakeTime:"07:00",duration:6.5,quality:71,comment:"少し遅くなったけど質は良かった",likes:11,liked:false,tag:"普通"},
+  {id:3,user:"Sora",avatar:"☁️", sleepTime:"22:00",wakeTime:"06:00",duration:8.0,quality:95,comment:"完璧な8時間睡眠🎉 記録更新！",likes:42,liked:false,tag:"最高"},
+  {id:4,user:"Yuki",avatar:"❄️", sleepTime:"01:00",wakeTime:"07:30",duration:6.5,quality:60,comment:"少し寝不足…明日は早めに",likes:8,liked:false,tag:"不足"},
+];
+const WEEK = [
+  {day:"月",hours:6.5,quality:70},{day:"火",hours:7.0,quality:80},
+  {day:"水",hours:5.5,quality:55},{day:"木",hours:8.0,quality:92},
+  {day:"金",hours:7.5,quality:85},{day:"土",hours:9.0,quality:90},
+  {day:"日",hours:7.0,quality:74},
+];
+const RANKING = [
+  {rank:1,user:"Sora",  avatar:"☁️", score:95,streak:12},
+  {rank:2,user:"Hana",  avatar:"🌸", score:88,streak:7},
+  {rank:3,user:"Riku",  avatar:"🌿", score:79,streak:5},
+  {rank:4,user:"あなた",avatar:"😊", score:74,streak:3},
+  {rank:5,user:"Yuki",  avatar:"❄️", score:68,streak:2},
+];
+const PRODUCTS = [
+  {name:"快眠アイピロー",  brand:"SleepCo", price:"¥2,800",rating:4.8,emoji:"😴",tag:"人気No.1"},
+  {name:"ラベンダーミスト",brand:"AromaLab",price:"¥1,980",rating:4.6,emoji:"💜",tag:"新着"},
+  {name:"遮光カーテン",   brand:"DarkRoom", price:"¥8,500",rating:4.9,emoji:"🌑",tag:"おすすめ"},
+  {name:"睡眠サプリ",     brand:"NightCap", price:"¥3,200",rating:4.5,emoji:"💊",tag:"人気"},
+];
+
+let posts = [...POSTS];
+let currentUser = null;
+
+
+// ══ UTILS ═════════════════════════════════════════════════
+function qColor(q){ return q>=85?"#4ade80":q>=70?"#60a5fa":q>=55?"#fbbf24":"#f87171"; }
+function calcDur(s,w){
+  const [sh,sm]=s.split(":").map(Number),[wh,wm]=w.split(":").map(Number);
+  let d=(wh+wm/60)-(sh+sm/60); if(d<0)d+=24; return Math.round(d*10)/10;
+}
+function calcQuality(dur){ return Math.min(99,Math.max(40,Math.round(60+(dur-6)*8+Math.random()*10))); }
+
+// ══ STARS ═════════════════════════════════════════════════
+(function(){
+  const el=document.getElementById("stars");
+  for(let i=0;i<50;i++){
+    const s=document.createElement("div"); s.className="star";
+    const sz=Math.random()*2+1;
+    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;opacity:${Math.random()*.4+.1};--dur:${Math.random()*3+2}s;--delay:${Math.random()*3}s`;
+    el.appendChild(s);
+  }
+})();
+
+// ══ AUTH ══════════════════════════════════════════════════
+let authMode = "login";
+function switchMode(m){
+  authMode = m;
+  document.querySelectorAll(".auth-tab").forEach((t,i)=>t.classList.toggle("active",(m==="login"?i===0:i===1)));
+  document.getElementById("name-field").style.display = m==="register"?"block":"none";
+  document.querySelector(".btn-primary").textContent = m==="login"?"ログイン →":"アカウントを作成 →";
+  document.getElementById("auth-err").textContent="";
+}
+function doLogin(){
+  const email=document.getElementById("inp-email").value;
+  const pass =document.getElementById("inp-pass").value;
+  const name =document.getElementById("inp-name").value;
+  if(!email||!pass){ document.getElementById("auth-err").textContent="メールとパスワードを入力してください"; return; }
+  if(authMode==="register"&&!name){ document.getElementById("auth-err").textContent="名前を入力してください"; return; }
+  startApp({name:name||email.split("@")[0], avatar:"😊"});
+}
+function doGuest(){ startApp({name:"ゲスト",avatar:"👤"}); }
+function doLogout(){
+  document.getElementById("app").style.display="none";
+  document.getElementById("auth-page").style.display="flex";
+  currentUser=null;
+}
+function startApp(user){
+  currentUser=user;
+  document.getElementById("auth-page").style.display="none";
+  document.getElementById("app").style.display="block";
+  document.getElementById("nav-username").textContent=user.avatar+" "+user.name;
+  renderFeed(); renderCharts(); renderRanking(); renderShop(); renderTips();
+}
+
+// ══ TABS ══════════════════════════════════════════════════
+function showTab(id, btn){
+  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".nav-tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("tab-"+id).classList.add("active");
+  btn.classList.add("active");
+}
+
+// ══ FEED ══════════════════════════════════════════════════
+function renderFeed(){
+  document.getElementById("feed").innerHTML = posts.map(p=>`
+    <div class="post">
+      <div class="post-head">
+        <div class="avatar">${p.avatar}</div>
+        <div>
+          <div class="post-user">${p.user}</div>
+          <div class="post-time">${p.sleepTime} → ${p.wakeTime} ／ ${p.duration}時間</div>
+        </div>
+        <div class="post-tag">${p.tag}</div>
+      </div>
+      <div class="chips">
+        <span class="chip">💤 ${p.duration}h</span>
+        <span class="chip" style="color:${qColor(p.quality)}">品質 ${p.quality}</span>
+      </div>
+      <div class="qbar"><div class="qfill" style="width:${p.quality}%;background:${qColor(p.quality)}"></div></div>
+      <div class="post-comment">${p.comment}</div>
+      <button class="like-btn ${p.liked?"liked":""}" onclick="toggleLike(${p.id})">
+        ${p.liked?"❤️":"🤍"} ${p.likes}
+      </button>
+    </div>
+  `).join("");
+}
+function toggleLike(id){
+  posts=posts.map(p=>p.id===id?{...p,liked:!p.liked,likes:p.liked?p.likes-1:p.likes+1}:p);
+  renderFeed();
+}
+
+// ── Log Modal ──
+function openLog(){ document.getElementById("log-modal").classList.add("open"); }
+function closeLog(){ document.getElementById("log-modal").classList.remove("open"); }
+function submitLog(){
+  const s=document.getElementById("log-sleep").value;
+  const w=document.getElementById("log-wake").value;
+  const c=document.getElementById("log-comment").value;
+  const dur=calcDur(s,w), q=calcQuality(dur);
+  posts=[{id:Date.now(),user:currentUser.name,avatar:currentUser.avatar,sleepTime:s,wakeTime:w,duration:dur,quality:q,comment:c||"今日の睡眠を記録しました",likes:0,liked:false,tag:q>=85?"快眠":q>=70?"普通":"不足"},...posts];
+  renderFeed(); closeLog();
+}
+
+// ══ CHARTS ════════════════════════════════════════════════
+function renderCharts(){
+  const maxH=Math.max(...WEEK.map(d=>d.hours));
+  document.getElementById("chart-hours").innerHTML = WEEK.map(d=>`
+    <div class="bar-col">
+      <span class="bar-val">${d.hours}h</span>
+      <div class="bar" style="height:${(d.hours/maxH)*84}px;background:${qColor(d.quality)}"></div>
+      <span class="bar-day">${d.day}</span>
+    </div>`).join("");
+  document.getElementById("chart-quality").innerHTML = WEEK.map(d=>`
+    <div class="bar-col">
+      <span class="bar-val">${d.quality}</span>
+      <div class="bar" style="height:${(d.quality/100)*84}px;background:#0891b2"></div>
+      <span class="bar-day">${d.day}</span>
+    </div>`).join("");
+}
+
+// ══ TIPS ══════════════════════════════════════════════════
+const TIPS = [
+  {icon:"🌡️",title:"室温を18〜22℃に保つ",desc:"快眠に最適な室温は18〜22℃。夏はエアコンを26℃に設定し、冬は暖房を切ってから寝ると深い眠りに入りやすくなります。",tag:"環境"},
+  {icon:"📱",title:"就寝1時間前はスマホを置く",desc:"スマホのブルーライトは睡眠ホルモン（メラトニン）の分泌を抑制します。寝る前はナイトモードにするか、本を読む習慣をつけましょう。",tag:"習慣"},
+  {icon:"☕",title:"カフェインは15時までに",desc:"コーヒー・紅茶・エナジードリンクのカフェインは体内で6時間以上残ります。午後3時以降は控えると寝つきが良くなります。",tag:"食事"},
+  {icon:"🛁",title:"就寝90分前に入浴する",desc:"38〜40℃のぬるめのお湯に15分浸かると、体温が一時的に上がり、その後の体温低下が眠気を誘います。",tag:"習慣"},
+  {icon:"🌅",title:"毎朝同じ時間に起きる",desc:"週末も含めて毎日同じ時間に起床すると体内時計が整い、夜自然に眠くなります。睡眠の質を高める最も効果的な習慣の一つです。",tag:"リズム"},
+  {icon:"🏃",title:"夕方に軽い運動をする",desc:"ウォーキングやストレッチなど軽い有酸素運動を夕方に行うと、深部体温が適切に下がり、睡眠の質が向上します。就寝3時間前までに終わらせましょう。",tag:"運動"},
+  {icon:"🌑",title:"寝室を暗くする",desc:"光は睡眠の敵。遮光カーテンを使い、LEDの小さな光も隠しましょう。スマートフォンの充電ランプも睡眠を妨げることがあります。",tag:"環境"},
+  {icon:"🧘",title:"腹式呼吸で緊張をほぐす",desc:"4秒吸って、7秒止めて、8秒かけてゆっくり吐く「4-7-8呼吸法」を試してみてください。副交感神経が優位になり、自然と眠くなります。",tag:"リラックス"},
+  {icon:"📔",title:"寝る前に翌日の予定を書く",desc:"頭の中で「明日やること」をぐるぐる考えると眠れなくなります。就寝前にノートに書き出すことで、脳がリセットされ安眠につながります。",tag:"メンタル"},
+];
+
+function renderTips(){
+  document.getElementById("tips-grid").innerHTML = TIPS.map(t=>`
+    <div class="tip-card">
+      <div class="tip-icon">${t.icon}</div>
+      <div>
+        <div class="tip-title">${t.title}</div>
+        <div class="tip-desc">${t.desc}</div>
+        <span class="tip-tag">${t.tag}</span>
+      </div>
+    </div>`).join("");
+}
+
+// ══ RANKING ═══════════════════════════════════════════════
+function renderRanking(){
+  document.getElementById("ranking-list").innerHTML = RANKING.map(r=>`
+    <div class="rank-card ${r.user==="あなた"?"me":""}">
+      <div class="rank-num" style="color:${r.rank===1?"#fbbf24":r.rank===2?"#94a3b8":r.rank===3?"#b45309":"#475569"};font-size:${r.rank<=3?26:16}px">
+        ${r.rank===1?"🥇":r.rank===2?"🥈":r.rank===3?"🥉":r.rank}
+      </div>
+      <div class="avatar" style="width:38px;height:38px;font-size:18px">${r.avatar}</div>
+      <div class="rank-info">
+        <div class="rank-name">${r.user}${r.user==="あなた"?" 👈":""}</div>
+        <div class="rank-streak">🔥 ${r.streak}日連続</div>
+      </div>
+      <div class="rank-score">${r.score}</div>
+    </div>`).join("");
+}
+
+// ══ SHOP ══════════════════════════════════════════════════
+function renderShop(){
+  document.getElementById("shop-grid").innerHTML = PRODUCTS.map(p=>`
+    <div class="product">
+      <div class="product-icon">${p.emoji}</div>
+      <div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-tag">${p.tag}</div>
+        <div class="product-brand">${p.brand}</div>
+        <div class="product-stars">${"★".repeat(Math.floor(p.rating))} ${p.rating}</div>
+        <div class="product-price">${p.price}</div>
+      </div>
+      <button class="detail-btn">詳細を見る →</button>
+    </div>`).join("");
+}
+</script>
+</body>
+</html>
